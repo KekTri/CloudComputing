@@ -1,0 +1,115 @@
+---
+# MongoDB PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-ride-pvc
+  namespace: mobility
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+# MongoDB Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-ride
+  namespace: mobility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-ride
+  template:
+    metadata:
+      labels:
+        app: mongo-ride
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7.0
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-ride-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongo-ride-storage
+          persistentVolumeClaim:
+            claimName: mongo-ride-pvc
+---
+# MongoDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ride
+  namespace: mobility
+spec:
+  selector:
+    app: mongo-ride
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+# ride-service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ride-service
+  namespace: mobility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ride-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ride-service
+    spec:
+      containers:
+        - name: ride-service
+          image: ghcr.io/kektri/cloudcomputing/ride-service:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MONGO_URL
+              value: "mongodb://mongo-ride:27017"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+# ride-service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ride-service
+  namespace: mobility
+spec:
+  selector:
+    app: ride-service
+  ports:
+    - port: 80
+      targetPort: 8000

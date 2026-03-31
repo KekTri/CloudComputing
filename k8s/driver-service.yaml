@@ -1,0 +1,110 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-driver-pvc
+  namespace: mobility
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-driver
+  namespace: mobility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-driver
+  template:
+    metadata:
+      labels:
+        app: mongo-driver
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7.0
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-driver-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongo-driver-storage
+          persistentVolumeClaim:
+            claimName: mongo-driver-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-driver
+  namespace: mobility
+spec:
+  selector:
+    app: mongo-driver
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: driver-service
+  namespace: mobility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: driver-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: driver-service
+    spec:
+      containers:
+        - name: driver-service
+          image: ghcr.io/kektri/cloudcomputing/driver-service:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MONGO_URL
+              value: "mongodb://mongo-driver:27017"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: driver-service
+  namespace: mobility
+spec:
+  selector:
+    app: driver-service
+  ports:
+    - port: 80
+      targetPort: 8000

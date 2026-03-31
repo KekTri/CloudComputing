@@ -1,0 +1,60 @@
+# Cluster credentials - never commit
+gruppe-2-kubeconfig.yaml
+*-kubeconfig.yaml
+
+# Environment / secrets
+.env
+*.env
+.env.*
+!.env.example
+
+# Certificates & keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_ed25519
+id_ecdsa
+
+# Tokens & credentials
+*.token
+*.secret
+secrets.yaml
+secrets.yml
+*-secret.yaml
+*-secret.yml
+credentials.json
+service-account*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Docker local data
+volumes/
+
+CLAUDE.md
+Skript/01-einführung-bd.pdf
+Skript/01-einführung-cc.pdf
+Skript/02-immutable-infrastructure.pdf
+Skript/02-no_sql_datenbanken.pdf
+Skript/02-parallele_architekturen.pdf
+Skript/02-wiederholung.pdf
+Skript/03-hadoop.pdf
+Skript/03-microservices.pdf
+Skript/03-wiederholung.pdf
+Skript/04-containerisierung-docker.pdf
+Skript/04-spark.pdf
+Skript/04-wiederholung.pdf
+Skript/05-orchestrierung-kubernetes.pdf
+Skript/05-streaming.pdf
+Skript/06-abschlussprojekt.pdf
+Skript/06-additional.pdf
+Skript/06-lambda_kappa.pdf

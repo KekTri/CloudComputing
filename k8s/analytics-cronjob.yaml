@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-analytics-pvc
+  namespace: mobility
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-analytics
+  namespace: mobility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-analytics
+  template:
+    metadata:
+      labels:
+        app: mongo-analytics
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7.0
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-analytics-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongo-analytics-storage
+          persistentVolumeClaim:
+            claimName: mongo-analytics-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-analytics
+  namespace: mobility
+spec:
+  selector:
+    app: mongo-analytics
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: analytics-job
+  namespace: mobility
+spec:
+  schedule: "0 * * * *"   # Every hour
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: analytics
+              image: ghcr.io/kektri/cloudcomputing/analytics-service:latest
+              env:
+                - name: RIDE_MONGO_URL
+                  value: "mongodb://mongo-ride:27017"
+                - name: ANALYTICS_MONGO_URL
+                  value: "mongodb://mongo-analytics:27017"

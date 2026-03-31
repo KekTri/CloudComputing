@@ -1,0 +1,127 @@
+version: "3.9"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  mongo-ride:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-ride-data:/data/db
+
+  mongo-driver:
+    image: mongo:7.0
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-driver-data:/data/db
+
+  mongo-customer:
+    image: mongo:7.0
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-customer-data:/data/db
+
+  mongo-tracking:
+    image: mongo:7.0
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo-tracking-data:/data/db
+
+  mongo-payment:
+    image: mongo:7.0
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo-payment-data:/data/db
+
+  mongo-analytics:
+    image: mongo:7.0
+    ports:
+      - "27022:27017"
+    volumes:
+      - mongo-analytics-data:/data/db
+
+  ride-service:
+    build: ./services/ride-service
+    ports:
+      - "8001:8000"
+    environment:
+      MONGO_URL: mongodb://mongo-ride:27017
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - mongo-ride
+      - kafka
+
+  driver-service:
+    build: ./services/driver-service
+    ports:
+      - "8002:8000"
+    environment:
+      MONGO_URL: mongodb://mongo-driver:27017
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - mongo-driver
+      - kafka
+
+  customer-service:
+    build: ./services/customer-service
+    ports:
+      - "8003:8000"
+    environment:
+      MONGO_URL: mongodb://mongo-customer:27017
+    depends_on:
+      - mongo-customer
+
+  tracking-service:
+    build: ./services/tracking-service
+    ports:
+      - "8004:8000"
+    environment:
+      MONGO_URL: mongodb://mongo-tracking:27017
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - mongo-tracking
+      - kafka
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "8005:8000"
+    environment:
+      MONGO_URL: mongodb://mongo-payment:27017
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - mongo-payment
+      - kafka
+
+volumes:
+  mongo-ride-data:
+  mongo-driver-data:
+  mongo-customer-data:
+  mongo-tracking-data:
+  mongo-payment-data:
+  mongo-analytics-data:
