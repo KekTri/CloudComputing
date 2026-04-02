@@ -1,3 +1,6 @@
+# Claude Code local config
+.claude/
+
 # Cluster credentials - never commit
 gruppe-2-kubeconfig.yaml
 *-kubeconfig.yaml
