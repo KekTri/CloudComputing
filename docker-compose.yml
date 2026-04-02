@@ -118,6 +118,13 @@ services:
       - mongo-payment
       - kafka
 
+  dashboard:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+
 volumes:
   mongo-ride-data:
   mongo-driver-data:
