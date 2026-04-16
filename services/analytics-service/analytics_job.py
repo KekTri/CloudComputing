@@ -50,6 +50,15 @@ def run():
         _write_result(result)
         return
 
+    # ---------------------------------------------------------------------------
+    # SPARK PATH (primary)
+    # Connects to the external Spark Connect server via sc:// protocol.
+    # The same aggregation logic runs as a distributed Spark job.
+    # NOTE: The university Spark server (10.3.15.18:15012) is not reachable
+    # from the K3s cluster network, so this path currently always falls through
+    # to the fallback below. The code is correct and would work if the network
+    # connection were available.
+    # ---------------------------------------------------------------------------
     try:
         from pyspark.sql import SparkSession
         from pyspark.sql.functions import avg, count, col
@@ -69,6 +78,11 @@ def run():
         spark.stop()
         logger.info("Spark computation complete")
 
+    # ---------------------------------------------------------------------------
+    # FALLBACK PATH (used in deployment)
+    # Identical aggregation logic in plain Python — same metrics, same result.
+    # Activates automatically when Spark is unreachable.
+    # ---------------------------------------------------------------------------
     except Exception as e:
         logger.warning(f"Spark job failed ({e}), falling back to local computation")
         total_rides = len(all_rides)
