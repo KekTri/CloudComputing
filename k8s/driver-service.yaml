@@ -1,56 +1,4 @@
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-driver-pvc
-  namespace: mobility
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mongo-driver
-  namespace: mobility
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongo-driver
-  template:
-    metadata:
-      labels:
-        app: mongo-driver
-    spec:
-      containers:
-        - name: mongo
-          image: mongo:7.0
-          ports:
-            - containerPort: 27017
-          volumeMounts:
-            - name: mongo-driver-storage
-              mountPath: /data/db
-      volumes:
-        - name: mongo-driver-storage
-          persistentVolumeClaim:
-            claimName: mongo-driver-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mongo-driver
-  namespace: mobility
-spec:
-  selector:
-    app: mongo-driver
-  ports:
-    - port: 27017
-      targetPort: 27017
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -76,9 +24,14 @@ spec:
           image: ghcr.io/kektri/cloudcomputing/driver-service:latest
           ports:
             - containerPort: 8000
+          resources:
+            limits:
+              memory: "256Mi"
+            requests:
+              memory: "64Mi"
           env:
             - name: MONGO_URL
-              value: "mongodb://mongo-driver:27017"
+              value: "mongodb://mongo:27017"
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:

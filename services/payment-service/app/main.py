@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -61,7 +62,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Payment Service", lifespan=lifespan)
+app = FastAPI(title="Payment Service", lifespan=lifespan, docs_url="/payments/docs", openapi_url="/payments/openapi.json")
 
 
 @app.get("/payments/{ride_id}", response_model=PaymentRecord)
@@ -72,12 +73,6 @@ async def get_payment_by_ride(ride_id: str):
         raise HTTPException(status_code=404, detail="Payment not found")
     return PaymentRecord(**{k: v for k, v in payment.items() if k != "_id"})
 
-
-@app.get("/payments", response_model=list[PaymentRecord])
-async def list_payments():
-    db = get_db()
-    payments = await db.payments.find().to_list(100)
-    return [PaymentRecord(**{k: v for k, v in p.items() if k != "_id"}) for p in payments]
 
 
 @app.get("/health")

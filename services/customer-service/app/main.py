@@ -1,3 +1,4 @@
+import os
 import uuid
 import logging
 from contextlib import asynccontextmanager
@@ -18,7 +19,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Customer Service", lifespan=lifespan)
+app = FastAPI(title="Customer Service", lifespan=lifespan, docs_url="/customers/docs", openapi_url="/customers/openapi.json")
 
 
 @app.post("/customers", response_model=CustomerResponse, status_code=201)
@@ -43,20 +44,6 @@ async def get_customer(customer_id: str):
         raise HTTPException(status_code=404, detail="Customer not found")
     return CustomerResponse(**{k: v for k, v in customer.items() if k != "_id"})
 
-
-@app.get("/customers", response_model=list[CustomerResponse])
-async def list_customers():
-    db = get_db()
-    customers = await db.customers.find().to_list(100)
-    return [CustomerResponse(**{k: v for k, v in c.items() if k != "_id"}) for c in customers]
-
-
-@app.delete("/customers/{customer_id}", status_code=204)
-async def delete_customer(customer_id: str):
-    db = get_db()
-    result = await db.customers.delete_one({"customer_id": customer_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Customer not found")
 
 
 @app.get("/health")

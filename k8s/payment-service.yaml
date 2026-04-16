@@ -1,56 +1,4 @@
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-payment-pvc
-  namespace: mobility
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mongo-payment
-  namespace: mobility
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongo-payment
-  template:
-    metadata:
-      labels:
-        app: mongo-payment
-    spec:
-      containers:
-        - name: mongo
-          image: mongo:7.0
-          ports:
-            - containerPort: 27017
-          volumeMounts:
-            - name: mongo-payment-storage
-              mountPath: /data/db
-      volumes:
-        - name: mongo-payment-storage
-          persistentVolumeClaim:
-            claimName: mongo-payment-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mongo-payment
-  namespace: mobility
-spec:
-  selector:
-    app: mongo-payment
-  ports:
-    - port: 27017
-      targetPort: 27017
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -76,9 +24,14 @@ spec:
           image: ghcr.io/kektri/cloudcomputing/payment-service:latest
           ports:
             - containerPort: 8000
+          resources:
+            limits:
+              memory: "256Mi"
+            requests:
+              memory: "64Mi"
           env:
             - name: MONGO_URL
-              value: "mongodb://mongo-payment:27017"
+              value: "mongodb://mongo:27017"
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:

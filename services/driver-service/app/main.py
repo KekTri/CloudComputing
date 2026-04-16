@@ -1,8 +1,8 @@
 import asyncio
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 
@@ -10,7 +10,6 @@ from .database import connect_db, close_db, get_db
 from .kafka_client import start_producer, stop_producer, publish, start_consumer
 from .models import (
     CreateDriverRequest, DriverResponse, DriverStatus,
-    UpdateLocationRequest,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -78,7 +77,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Driver Service", lifespan=lifespan)
+app = FastAPI(title="Driver Service", lifespan=lifespan, docs_url="/drivers/docs", openapi_url="/drivers/openapi.json")
 
 
 @app.post("/drivers", response_model=DriverResponse, status_code=201)
@@ -104,40 +103,6 @@ async def get_driver(driver_id: str):
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     return DriverResponse(**{k: v for k, v in driver.items() if k != "_id"})
-
-
-@app.get("/drivers", response_model=list[DriverResponse])
-async def list_drivers(status: Optional[str] = None):
-    db = get_db()
-    query = {}
-    if status:
-        query["status"] = status
-    drivers = await db.drivers.find(query).to_list(100)
-    return [DriverResponse(**{k: v for k, v in d.items() if k != "_id"}) for d in drivers]
-
-
-@app.patch("/drivers/{driver_id}/location")
-async def update_location(driver_id: str, body: UpdateLocationRequest):
-    db = get_db()
-    result = await db.drivers.update_one(
-        {"driver_id": driver_id},
-        {"$set": {"current_location": {"lat": body.lat, "lon": body.lon}}},
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Driver not found")
-    return {"driver_id": driver_id, "lat": body.lat, "lon": body.lon}
-
-
-@app.patch("/drivers/{driver_id}/status")
-async def update_status(driver_id: str, status: DriverStatus):
-    db = get_db()
-    result = await db.drivers.update_one(
-        {"driver_id": driver_id},
-        {"$set": {"status": status}},
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Driver not found")
-    return {"driver_id": driver_id, "status": status}
 
 
 @app.get("/health")

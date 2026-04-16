@@ -7,8 +7,8 @@ metadata:
   namespace: mobility
 spec:
   parentRefs:
-    - name: gateway
-      namespace: gateway
+    - name: traefik-gateway
+      namespace: kube-system
   rules:
     - matches:
         - path:
@@ -26,8 +26,8 @@ metadata:
   namespace: mobility
 spec:
   parentRefs:
-    - name: gateway
-      namespace: gateway
+    - name: traefik-gateway
+      namespace: kube-system
   rules:
     - matches:
         - path:
@@ -45,8 +45,8 @@ metadata:
   namespace: mobility
 spec:
   parentRefs:
-    - name: gateway
-      namespace: gateway
+    - name: traefik-gateway
+      namespace: kube-system
   rules:
     - matches:
         - path:
@@ -64,8 +64,8 @@ metadata:
   namespace: mobility
 spec:
   parentRefs:
-    - name: gateway
-      namespace: gateway
+    - name: traefik-gateway
+      namespace: kube-system
   rules:
     - matches:
         - path:
@@ -83,8 +83,8 @@ metadata:
   namespace: mobility
 spec:
   parentRefs:
-    - name: gateway
-      namespace: gateway
+    - name: traefik-gateway
+      namespace: kube-system
   rules:
     - matches:
         - path:

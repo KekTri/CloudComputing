@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import math
+import os
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
+
 
 from fastapi import FastAPI, HTTPException
 
@@ -99,7 +100,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Ride Service", lifespan=lifespan)
+app = FastAPI(title="Ride Service", lifespan=lifespan, docs_url="/rides/docs", openapi_url="/rides/openapi.json")
 
 
 @app.post("/rides", response_model=RideResponse, status_code=201)
@@ -185,16 +186,6 @@ async def complete_ride(ride_id: str):
         "price_eur": ride["price_eur"],
     })
     return {"ride_id": ride_id, "status": RideStatus.COMPLETED}
-
-
-@app.get("/rides")
-async def list_rides(customer_id: Optional[str] = None):
-    db = get_db()
-    query = {}
-    if customer_id:
-        query["customer_id"] = customer_id
-    rides = await db.rides.find(query).to_list(100)
-    return [RideResponse(**{k: v for k, v in r.items() if k != "_id"}) for r in rides]
 
 
 @app.get("/health")
