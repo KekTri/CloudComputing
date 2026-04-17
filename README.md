@@ -65,8 +65,13 @@ ride.created  →  driver.assigned  →  payment.requested  →  payment.authori
 
 Container Images sind auf GHCR unter `ghcr.io/kektri/cloudcomputing/<service>:latest` verfügbar.
 
+> **Hinweis:** Für den Analytics-Job wird zusätzlich `k8s/spark-secret.yaml` benötigt (enthält den Spark-Token, nicht im Repository enthalten).
+
 ```bash
 export KUBECONFIG=gruppe-2-kubeconfig.yaml
+
+# Spark-Secret zuerst anwenden (separat bereitgestellt)
+kubectl apply -f k8s/spark-secret.yaml
 
 # Namespace + Infrastruktur
 kubectl apply -f k8s/namespace.yaml
