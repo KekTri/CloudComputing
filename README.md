@@ -14,50 +14,41 @@ Uber-ähnliches Ride-Sharing-System auf Basis von Microservices, Kafka und Kuber
 │   ├── ride-service/        # Fahrtbuchung & SAGA-Orchestrierung (MongoDB, Kafka)
 │   ├── payment-service/     # Zahlungsabwicklung (MongoDB, Kafka)
 │   ├── tracking-service/    # Positionsverfolgung während der Fahrt (MongoDB, Kafka)
-│   └── analytics-service/   # Spark Batch Job (historische Auswertung, MongoDB)
-├── k8s/
-│   ├── namespace.yaml
-│   ├── kafka-config.yaml
-│   ├── gateway.yaml
-│   ├── customer-service.yaml
-│   ├── driver-service.yaml
-│   ├── ride-service.yaml
-│   ├── payment-service.yaml
-│   ├── tracking-service.yaml
-│   └── analytics-cronjob.yaml
-├── dashboard/               # Einfaches HTML-Dashboard (Nginx)
-└── docker-compose.yml       # Lokale Entwicklungsumgebung
+│   ├── analytics-service/   # Spark Batch Job (historische Auswertung, MongoDB)
+│   └── analytics-api/       # REST API zum Abrufen der Analytics-Ergebnisse
+└── k8s/
+    ├── namespace.yaml
+    ├── mongo-shared.yaml    # Gemeinsame MongoDB-Instanz für alle Services
+    ├── kafka-config.yaml
+    ├── gateway.yaml
+    ├── customer-service.yaml
+    ├── driver-service.yaml
+    ├── ride-service.yaml
+    ├── payment-service.yaml
+    ├── tracking-service.yaml
+    └── analytics-cronjob.yaml
 ```
 
 ## Architektur
 
-- **Kommunikation:** synchron via REST (service-to-service), asynchron via Kafka (Events)
-- **Datenbanken:** je ein eigenes MongoDB-Deployment pro Service
-- **SAGA:** Fahrtbuchung (ride-service) orchestriert eine SAGA-Transaktion über mind. 3 Schritte inkl. Compensating Transaction
-- **Analytics:** Spark Batch Job liest historische Fahrtdaten aus Kafka/MongoDB, speichert Ergebnisse in MongoDB
+- **Kommunikation:** synchron via REST (Client → Service), asynchron via Kafka (Service → Service)
+- **Datenbank:** eine gemeinsame MongoDB-Instanz, jeder Service nutzt eine eigene Datenbank darin
+- **SAGA:** Fahrtbuchung (ride-service) orchestriert eine SAGA-Transaktion über 4 Schritte inkl. Compensating Transaction
+- **Analytics:** Spark Batch Job (CronJob) liest historische Fahrtdaten aus MongoDB, speichert Ergebnisse in MongoDB; Fallback auf lokale Python-Berechnung wenn Spark nicht erreichbar
 - **Deployment:** Kubernetes (K3s), Rolling Update für Zero-Downtime
 
 ## User Stories
 
-1. **Fahrt buchen** — Kunde bucht Fahrt, bekommt Preis/Zeit, Fahrer akzeptiert, Position wird getrackt, Zahlung bei Ankunft
-2. **Fahrerbenachrichtigung** — Fahrer erhält Angebot, akzeptiert, schließt Fahrt ab, wird danach wieder verfügbar
-3. **Analytics (Batch)** — periodische Auswertung der letzten 24h, Ergebnisse abrufbar z.B. für Pricing
+1. **Fahrt buchen** — Kunde bucht Fahrt, bekommt Preis/Zeit-Schätzung, Fahrer akzeptiert via Kafka, Position wird getrackt, Zahlung bei Ankunft
+2. **Fahrerbenachrichtigung** — Fahrer erhält Fahrtangebot via Kafka, akzeptiert, schließt Fahrt ab, wird danach wieder verfügbar
+3. **Analytics (Batch)** — stündliche Auswertung der letzten 24h (Anzahl Fahrten, Ø Preis, Ø Distanz), Ergebnisse abrufbar via `GET /analytics/latest`
 
-## Lokale Entwicklung
+## Kafka Events (SAGA-Ablauf)
 
-```bash
-docker-compose up --build
 ```
-
-| Service          | Port  |
-|------------------|-------|
-| ride-service     | 8001  |
-| driver-service   | 8002  |
-| customer-service | 8003  |
-| tracking-service | 8004  |
-| payment-service  | 8005  |
-| dashboard        | 8080  |
-| kafka            | 9092  |
+ride.created  →  driver.assigned  →  payment.requested  →  payment.authorized
+                                                         ↘  payment.failed (Compensating)
+```
 
 ## Kubernetes Deployment
 
@@ -67,3 +58,14 @@ export KUBECONFIG=gruppe-2-kubeconfig.yaml
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
 ```
+
+## API-Übersicht
+
+| Service          | Endpunkte                                              |
+|------------------|--------------------------------------------------------|
+| customer-service | POST /customers, GET /customers/{id}                   |
+| driver-service   | POST /drivers, GET /drivers/{id}, PATCH /drivers/{id}/status |
+| ride-service     | POST /rides, GET /rides/{id}, POST /rides/{id}/complete |
+| tracking-service | POST /tracking/position, GET /tracking/{ride_id}       |
+| payment-service  | GET /payments/{ride_id}                                |
+| analytics-api    | GET /analytics/latest                                  |

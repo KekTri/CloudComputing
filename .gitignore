@@ -44,6 +44,7 @@ venv/
 volumes/
 
 CLAUDE.md
+abgabe/
 Skript/01-einführung-bd.pdf
 Skript/01-einführung-cc.pdf
 Skript/02-immutable-infrastructure.pdf
