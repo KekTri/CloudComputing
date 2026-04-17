@@ -50,22 +50,51 @@ ride.created  →  driver.assigned  →  payment.requested  →  payment.authori
                                                          ↘  payment.failed (Compensating)
 ```
 
-## Kubernetes Deployment
+## API-Übersicht
+
+| Service          | Endpunkte                                                    |
+|------------------|--------------------------------------------------------------|
+| customer-service | POST /customers, GET /customers/{id}                         |
+| driver-service   | POST /drivers, GET /drivers/{id}, PATCH /drivers/{id}/status |
+| ride-service     | POST /rides, GET /rides/{id}, POST /rides/{id}/complete      |
+| tracking-service | POST /tracking/position, GET /tracking/{ride_id}             |
+| payment-service  | GET /payments/{ride_id}                                      |
+| analytics-api    | GET /analytics/latest                                        |
+
+## Deployment
+
+Container Images sind auf GHCR unter `ghcr.io/kektri/cloudcomputing/<service>:latest` verfügbar.
 
 ```bash
 export KUBECONFIG=gruppe-2-kubeconfig.yaml
 
+# Namespace + Infrastruktur
 kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/
+kubectl apply -f k8s/mongo-shared.yaml
+kubectl apply -f k8s/kafka-config.yaml
+kubectl apply -f k8s/gateway.yaml
+
+# Services
+kubectl apply -f k8s/customer-service.yaml
+kubectl apply -f k8s/driver-service.yaml
+kubectl apply -f k8s/ride-service.yaml
+kubectl apply -f k8s/payment-service.yaml
+kubectl apply -f k8s/tracking-service.yaml
+
+# Analytics (CronJob + API)
+kubectl apply -f k8s/analytics-cronjob.yaml
+kubectl scale deployment analytics-api -n mobility --replicas=1
+kubectl patch cronjob analytics-job -n mobility -p '{"spec":{"suspend":false}}'
 ```
 
-## API-Übersicht
+### Images selbst bauen (optional)
 
-| Service          | Endpunkte                                              |
-|------------------|--------------------------------------------------------|
-| customer-service | POST /customers, GET /customers/{id}                   |
-| driver-service   | POST /drivers, GET /drivers/{id}, PATCH /drivers/{id}/status |
-| ride-service     | POST /rides, GET /rides/{id}, POST /rides/{id}/complete |
-| tracking-service | POST /tracking/position, GET /tracking/{ride_id}       |
-| payment-service  | GET /payments/{ride_id}                                |
-| analytics-api    | GET /analytics/latest                                  |
+```bash
+docker build -t ghcr.io/kektri/cloudcomputing/customer-service:latest services/customer-service/
+docker build -t ghcr.io/kektri/cloudcomputing/driver-service:latest services/driver-service/
+docker build -t ghcr.io/kektri/cloudcomputing/ride-service:latest services/ride-service/
+docker build -t ghcr.io/kektri/cloudcomputing/payment-service:latest services/payment-service/
+docker build -t ghcr.io/kektri/cloudcomputing/tracking-service:latest services/tracking-service/
+docker build -t ghcr.io/kektri/cloudcomputing/analytics-service:latest services/analytics-service/
+docker build -t ghcr.io/kektri/cloudcomputing/analytics-api:latest services/analytics-api/
+```
